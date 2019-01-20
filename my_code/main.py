@@ -50,7 +50,7 @@ def sobel_mask(gray, sx_thresh):
     sobel_x = np.abs(cv2.Sobel(gray, cv2.CV_64F, 1, 0))
     # Normalize it so that the threshold can be more easily given
     max_value = np.max(sobel_x)
-    binary_output = np.int(255*sobel_x/max_value)
+    binary_output = np.array(255*sobel_x/max_value, np.uint8)
     mask = np.zeros_like(binary_output)
     mask[(binary_output > sx_thresh[0]) & (binary_output < sx_thresh[1])] = 1
     return mask
@@ -90,11 +90,10 @@ def create_binary_image(img, s_thresh=(100, 255), sx_thresh=(10, 200), dir_thres
     # This helps to detect yellow lanes better, which is a significant issue in the video 
     G = img[:,:,1]
     R = img[:,:,2]
-    color_combined = np.zeros_like(R)
     r_g = (R > c_thresh) & (G > c_thresh)
     
     # color channel thresholds
-    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
     S = hls[:,:,2]
     L = hls[:,:,1]
     
@@ -104,13 +103,15 @@ def create_binary_image(img, s_thresh=(100, 255), sx_thresh=(10, 200), dir_thres
 
     # combine all the thresholds
     # The pixel we want is either white or yellow
+    color_combined = np.zeros_like(R)
     color_combined[(r_g & l) & (s | combined)] = 1
     
     # apply the region of interest mask
+    # This helps to remove the shadow outside the lane
     mask = np.zeros_like(color_combined)
-    height, width = img.shape[0], img.shape[1]
-    region_of_interest_vertices = np.array([[0,height-1], [width/2, int(0.5*height)], [width-1, height-1]], dtype=np.int32)
-    cv2.fillPoly(mask, [region_of_interest_vertices], 1)
+    h, w = img.shape[0], img.shape[1]
+    polygon_vertice = np.array([[0,h-1], [w//2, h//2], [w-1, h-1]], dtype=np.int32)
+    cv2.fillPoly(mask, [polygon_vertice], 1)
     binary = cv2.bitwise_and(color_combined, mask)
     
     return binary
@@ -458,7 +459,7 @@ def process_videos(path_to_video, path_to_output):
     new_clip.write_videofile(path_to_output, audio=False)
 
 if __name__ == "__main__":
-    # process_all_images()
+    process_all_images()
     process_videos('../project_video.mp4', '../output_videos/project_video_output.mp4')
     process_videos('../challenge_video.mp4', '../output_videos/challenge_video.mp4')
-    process_videos('../harder_challenge_video.mp4', '../output_videos/harder_challenge_video.mp4')
+    # process_videos('../harder_challenge_video.mp4', '../output_videos/harder_challenge_video.mp4')
