@@ -46,29 +46,28 @@ def calibrate_camera(path_to_images='../camera_cal/calibration*.jpg', pattern=(9
     # Return the camera matrix and distortion coefs
     return mtx, dist
 
-def sobel_thresh(gray, sx_thresh):
-    sobel = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
-    abs_sobel = np.absolute(sobel)
-    max_value = np.max(abs_sobel)
-    binary_output = np.uint8(255*abs_sobel/max_value)
-    threshold_mask = np.zeros_like(binary_output)
-    threshold_mask[(binary_output >= sx_thresh[0]) & (binary_output <= sx_thresh[1])] = 1
-    return threshold_mask
+def sobel_mask(gray, sx_thresh):
+    sobel_x = np.abs(cv2.Sobel(gray, cv2.CV_64F, 1, 0))
+    # Normalize it so that the threshold can be more easily given
+    max_value = np.max(sobel_x)
+    binary_output = np.int(255*sobel_x/max_value)
+    mask = np.zeros_like(binary_output)
+    mask[(binary_output > sx_thresh[0]) & (binary_output < sx_thresh[1])] = 1
+    return mask
 
-def dir_threshold(gray, thresh=(0, np.pi/2)):
-    # Take the gradient in x and y separately
-    sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-    sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-    # 3) Take the absolute value of the x and y gradients
-    abs_sobel_x = np.absolute(sobel_x)
-    abs_sobel_y = np.absolute(sobel_y)
-    # 4) Use np.arctan2(abs_sobely, abs_sobelx) to calculate the direction of the gradient
-    direction = np.arctan2(abs_sobel_y,abs_sobel_x)
-    direction = np.absolute(direction)
-    # 5) Create a binary mask where direction thresholds are met
+def dir_mask(gray, thresh):
+    # x_gradient and y_gradient
+    # We only care about their absolute value
+    sobel_x = np.abs(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3))
+    sobel_y = np.abs(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3))
+
+    # Angle to horizontal line
+    direction = np.abs(np.arctan2(sobel_x, sobel_y))
+
+    # Mask
     mask = np.zeros_like(direction)
     mask[(direction >= thresh[0]) & (direction <= thresh[1])] = 1
-    # 6) Return this mask as your binary_output image
+
     return mask
 
 def create_binary_image(img, s_thresh=(100, 255), sx_thresh=(10, 200), dir_thresh=(np.pi/6, np.pi/2), c_thresh=50):
@@ -83,8 +82,8 @@ def create_binary_image(img, s_thresh=(100, 255), sx_thresh=(10, 200), dir_thres
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Compute the combined threshold
-    sobel_x = sobel_thresh(gray, sx_thresh)
-    dir_gradient = dir_threshold(gray, dir_thresh)
+    sobel_x = sobel_mask(gray, sx_thresh)
+    dir_gradient = dir_mask(gray, dir_thresh)
     combined = ((sobel_x == 1) & (dir_gradient == 1))
 
     # Color threshold in RGB color space
