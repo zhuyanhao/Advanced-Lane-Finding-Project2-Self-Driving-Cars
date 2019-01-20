@@ -19,6 +19,8 @@ The goals / steps of this project are the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
+You can check `/my_code/main.py` for the source code, `output_image` for the test images output and `output_video` for the video output.
+
 [//]: # (Image References)
 
 [image1]: ./examples/undistort_output.png "Undistorted"
@@ -26,7 +28,7 @@ The goals / steps of this project are the following:
 [image4]: ./examples/warped_straight_lines.jpg "Warp Example"
 [image5]: ./examples/color_fit_lines.jpg "Fit Visual"
 [image6]: ./examples/example_output.jpg "Output"
-[video1]: ./project_video.mp4 "Video"
+[video1]: ./output_video/project_video_output.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
@@ -57,38 +59,50 @@ Among those unstable detection, most are caused by the stains on the road, whose
 
 #### Perspective Transform
 
-To generate the transform matrix (and its inverse), I first plot the undistorted image and pick four points manually (source points). Matplotlib gives me the coordinates of pixel. Then the coordinates of destination points are provided to function `cv2.getPerspectiveTransform`. Function 'perspective_transform' does the calculation for you and below is the a bird's-eye view of binary image.
+To generate the transform matrix (and its inverse), I first plot the undistorted image and pick four points manually (source points). Matplotlib gives me the coordinates of pixel. Then the coordinates of destination points are provided to function `cv2.getPerspectiveTransform`. Function 'perspective_transform' does the calculation for you and below is the a bird's-eye view of the detected lanes.
 
 ![alt text][image4]
 
-#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+#### Lane Line Pixels and Polynomial
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+Two methods are provided to find the lane pixels. 
+
+If the previous detection fails or is not available, then we use a sliding window approach. When using this approach, we start from the bottom half of the image and compute the estimation of left and right lane at the bottom. This is done by finding the maximum element in binary image in the last row. Then the pixels in the sliding window are marked as lane pixels and the sliding window position is updated before moving up. 
+
+Sliding window is accurate but slow. When the previous detection is available, we can simply search around the lanes detected in the previous frame. It has been shown to be 30-40% faster on my machine and is less sensitive to the change of lightness. 
+
+`find_lane_sliding_window` and `find_lane_from_prior` implements these two approaches. After getting all the pixels, we simply fit a second order polynomial for the left/right lane. Below shows the lane found by this method:
 
 ![alt text][image5]
 
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+#### Curvature and Car Position
 
-I did this in lines # through # in my code in `my_other_file.py`
+Once the profile of left/right lane is found, it is very straightforward to compute the curvature and car position. The calculation is done in `curvature_and_position` function.
 
-#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+#### Pipeline
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+The function `process_image` combines all the previous steps and draw the detected lane on the original image. An example is shown here:
 
 ![alt text][image6]
 
 ---
 
-### Pipeline (video)
+### Video
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+To improve the efficiency of the algorithm, a helper class `Line` is created to swtich between sliding window method and the faster approach. Smoothing by averaging is also tried but it doesn't help in my case. It is probably because the additional thresholding (in RGB color space and gradient direction) is good enough to make stable prediction. 
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./video_output/project_video_output.mp4)
 
 ---
 
 ### Discussion
 
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+Two issues are encountered and one has been resolved. Both of them are discussed below.
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+#### 1. Detection sensitive to shadow and stains on the road
+
+When there is any shadow or stain on the road, the lane profile detected is not reasonable. As explained above, this is caused by the fact that we only check the x-gradient in S channel in the lecture. From my testing, the gradient is not always zero (contrary to what is claimed in the lecture) and could affect detection adversly. The solution is to check the color of pixel in RGB space instead and it works quite well.
+
+#### 2. Sliding window approach doesn't work well on the curvy lanes
+
+The algorithm above works okay for the `challenge_video` but fails in `harder_challenge_video`. The root cause is that the sliding window approach doesn't always work. Interestingly, it is able to predict one lane (either left/right). So one improvement I can think of is to use the distance between left/right lane as the lane distance is known in most cases. To do this, we'll first define a cost function that represents the correctness of prediction for each lane. Then we accept the lane prediction of the higher score and reject the other one. Now we use the lane distance to do a refined search to detect the other lane. This should improve the detection quite a lot when only one prediction is reliable. However, I didn't have the time to test it as it requires reconstruct all the helper functions.
