@@ -53,7 +53,7 @@ Among those unstable detection, most are caused by the stains on the road, whose
     3. The direction of gradient is within some angles of the horizontal line
     4. The x-gradient is large enough
 
-`sobel_thresh` computes the x-gradient mask; `dir_threshold` computes the gradient direction mask and `create_binary_image` generates the binary image. A sample binary image is given below:
+`sobel_mask` computes the x-gradient mask; `dir_mask` computes the gradient direction mask and `create_binary_image` generates the binary image. A sample binary image is given below:
 
 ![alt text][image3]
 
