@@ -91,7 +91,7 @@ The function `process_image` combines all the previous steps and draw the detect
 
 To improve the efficiency of the algorithm, a helper class `Line` is created to swtich between sliding window method and the faster approach. Smoothing by averaging is also tried but it doesn't help in my case. It is probably because the additional thresholding (in RGB color space and gradient direction) is good enough to make stable prediction. 
 
-Here's a [link to my video result](./video_output/project_video_output.mp4)
+Here's a [link to my video result](./output_videos/project_video_output.mp4)
 
 ---
 
